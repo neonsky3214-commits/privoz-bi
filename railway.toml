@@ -1,0 +1,10 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "cd backend && python -c 'from db import init_db; init_db()' && uvicorn main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/api/revenue/summary"
+restartPolicyType = "on_failure"
+
+[[volumes]]
+mountPath = "/app/data"
