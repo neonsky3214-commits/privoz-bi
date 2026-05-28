@@ -1,18 +1,11 @@
 [phases.setup]
-nixPkgs = ["python311", "nodejs_20", "nodePackages.npm"]
+nixPkgs = ["python311"]
 
 [phases.install]
 cmds = [
   "python -m venv /app/venv",
   "/app/venv/bin/pip install --upgrade pip --quiet",
-  "/app/venv/bin/pip install -r backend/requirements.txt --quiet",
-  "npm --prefix frontend install --silent"
-]
-
-[phases.build]
-cmds = [
-  "npm --prefix frontend run build",
-  "cp -r frontend/dist backend/frontend_dist"
+  "/app/venv/bin/pip install -r backend/requirements.txt --quiet"
 ]
 
 [start]

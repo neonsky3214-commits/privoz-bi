@@ -1,6 +1,7 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import APIRouter, Request, UploadFile, File, HTTPException, Query
 import io, csv, httpx
 from db import get_conn
+from routers.auth import verify_token
 router = APIRouter()
 
 def _save_revenue(rows, conn):

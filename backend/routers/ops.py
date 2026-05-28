@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Request, Query
 from db import get_conn
+from routers.auth import verify_token
 router = APIRouter()
 
 @router.get("/complaints")

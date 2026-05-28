@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from db import get_conn
+from routers.auth import verify_token
 router = APIRouter()
 
 @router.get("/social")
