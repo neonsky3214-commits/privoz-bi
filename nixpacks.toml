@@ -6,12 +6,12 @@ cmds = [
   "python -m venv /app/venv",
   "/app/venv/bin/pip install --upgrade pip --quiet",
   "/app/venv/bin/pip install -r backend/requirements.txt --quiet",
-  "cd frontend && npm install --silent"
+  "npm --prefix frontend install --silent"
 ]
 
 [phases.build]
 cmds = [
-  "cd frontend && npm run build",
+  "npm --prefix frontend run build",
   "cp -r frontend/dist backend/frontend_dist"
 ]
 
