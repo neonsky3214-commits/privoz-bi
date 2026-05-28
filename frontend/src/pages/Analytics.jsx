@@ -5,6 +5,7 @@ import {
   ComposedChart, Legend
 } from 'recharts'
 import axios from 'axios'
+import { usePeriod } from '../context.jsx'
 
 const api = axios.create({ baseURL: '/api' })
 api.interceptors.request.use(cfg => {
@@ -26,7 +27,8 @@ const PERIODS = ['2025-12','2025-11','2025-10','2025-09','2025-08','2025-07','20
 const YEAR_COLORS = {'2022':'rgba(100,116,139,.6)','2023':'rgba(167,139,250,.8)','2024':'rgba(251,191,36,.9)','2025':'#4f8ef7'}
 
 export default function Analytics() {
-  const [period, setPeriod]       = useState('2025-12')
+  const { dateFrom, dateTo } = usePeriod()
+  // period from context
   const [overview, setOverview]   = useState(null)
   const [tenants, setTenants]     = useState([])
   const [traffic, setTraffic]     = useState([])

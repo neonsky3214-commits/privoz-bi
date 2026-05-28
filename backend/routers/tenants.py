@@ -1,35 +1,55 @@
 from fastapi import APIRouter, Query, Request
-from pydantic import BaseModel
-from typing import Optional
 from db import get_conn
 from routers.auth import verify_token
+
 router = APIRouter()
 
-class TenantCreate(BaseModel):
-    name: str; category: Optional[str]=None; area_sqm: Optional[float]=None; rent_rate: Optional[float]=None
-
 @router.get("/")
-def list_tenants(request: Request, period: str = Query("2025-05")):
+def list_tenants(request: Request, date_from: str = Query("2025-01"), date_to: str = Query("2025-12")):
+    verify_token(request)
+    conn = get_conn()
+
+    # Get all periods in range
+    rows = conn.execute("""
+        SELECT tenant,
+               SUM(turnover) as turnover,
+               SUM(traffic) as traffic,
+               AVG(avg_check) as avg_check,
+               AVG(new_pct) as new_pct,
+               COUNT(period) as months_active
+        FROM turnover
+        WHERE tenant != 'Привоз, Москва'
+          AND period >= ? AND period <= ?
+          AND turnover > 0
+        GROUP BY tenant
+        ORDER BY turnover DESC
+    """, (date_from, date_to)).fetchall()
+    conn.close()
+
+    result = []
+    for i, r in enumerate(rows):
+        result.append({
+            "id": i+1,
+            "name": r["tenant"],
+            "turnover": r["turnover"],
+            "traffic": r["traffic"],
+            "avg_check": round(r["avg_check"], 0) if r["avg_check"] else None,
+            "new_pct": round(r["new_pct"], 1) if r["new_pct"] else None,
+            "months_active": r["months_active"],
+            "debt": 0,
+            "status": "active",
+        })
+    return result
+
+@router.get("/periods")
+def get_periods(request: Request):
+    """Список доступных периодов для фильтра"""
     verify_token(request)
     conn = get_conn()
     rows = conn.execute("""
-        SELECT t.id,t.name,t.category,t.area_sqm,t.rent_rate,t.status,
-               COALESCE(SUM(r.amount),0) as revenue,
-               COALESCE(SUM(CASE WHEN r.paid=0 THEN r.amount ELSE 0 END),0) as debt,
-               COALESCE(AVG(d.amount),0) as avg_check
-        FROM tenants t
-        LEFT JOIN revenue r ON r.tenant_id=t.id AND r.period=?
-        LEFT JOIN delivery_orders d ON d.tenant_id=t.id AND d.order_date LIKE ?
-        WHERE t.status='active' GROUP BY t.id ORDER BY revenue DESC
-    """, (period, f"{period}%")).fetchall()
+        SELECT DISTINCT period FROM turnover
+        WHERE tenant = 'Привоз, Москва'
+        ORDER BY period
+    """).fetchall()
     conn.close()
-    return [dict(r) for r in rows]
-
-@router.post("/")
-def create_tenant(request: Request, t: TenantCreate):
-    verify_token(request)
-    conn = get_conn()
-    cur = conn.execute("INSERT INTO tenants (name,category,area_sqm,rent_rate) VALUES (?,?,?,?)",
-                       (t.name,t.category,t.area_sqm,t.rent_rate))
-    conn.commit(); conn.close()
-    return {"id":cur.lastrowid,**t.dict()}
+    return [r["period"] for r in rows]

@@ -1,22 +1,16 @@
 import { createContext, useContext, useState } from 'react'
 
-const PeriodCtx = createContext(null)
+const Ctx = createContext(null)
 
 export function PeriodProvider({ children }) {
-  const [period, setPeriod] = useState('2025-05')
-  const [range, setRange]   = useState('month') // month | quarter | year
-
-  const PERIODS = {
-    month:   ['2025-05'],
-    quarter: ['2025-03','2025-04','2025-05'],
-    year:    ['2025-01','2025-02','2025-03','2025-04','2025-05'],
-  }
+  const [dateFrom, setDateFrom] = useState('2025-01')
+  const [dateTo, setDateTo]     = useState('2025-12')
 
   return (
-    <PeriodCtx.Provider value={{ period, setPeriod, range, setRange, periods: PERIODS[range] }}>
+    <Ctx.Provider value={{ dateFrom, setDateFrom, dateTo, setDateTo }}>
       {children}
-    </PeriodCtx.Provider>
+    </Ctx.Provider>
   )
 }
 
-export const usePeriod = () => useContext(PeriodCtx)
+export const usePeriod = () => useContext(Ctx)
