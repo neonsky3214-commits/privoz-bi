@@ -18,9 +18,11 @@ app.include_router(ops.router,       prefix="/api/ops")
 app.include_router(forecast.router,  prefix="/api/forecast")
 app.include_router(upload.router,    prefix="/api/upload")
 
-frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+# Serve built React frontend
+frontend_dist = os.path.join(os.path.dirname(__file__), "frontend_dist")
 if os.path.exists(frontend_dist):
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist,"assets")), name="assets")
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+
     @app.get("/{full_path:path}")
     async def spa(full_path: str):
-        return FileResponse(os.path.join(frontend_dist,"index.html"))
+        return FileResponse(os.path.join(frontend_dist, "index.html"))
