@@ -1,2 +1,2 @@
-import { Ops as O } from './Traffic.jsx'
-export default O
+import { Ops } from './Traffic.jsx'
+export default Ops

@@ -1,2 +1,2 @@
-import { Upload as U } from './Traffic.jsx'
-export default U
+import { Upload } from './Traffic.jsx'
+export default Upload

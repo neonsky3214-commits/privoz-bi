@@ -1,2 +1,2 @@
-import { Delivery as D } from './Traffic.jsx'
-export default D
+import { Delivery } from './Traffic.jsx'
+export default Delivery

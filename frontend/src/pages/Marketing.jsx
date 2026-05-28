@@ -1,2 +1,2 @@
-import { Marketing as M } from './Traffic.jsx'
-export default M
+import { Marketing } from './Traffic.jsx'
+export default Marketing

@@ -3,7 +3,7 @@ import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip,
 import { getTraffic, getDelivery, getMarketing, getAds, getComplaints, getNPS, getForecast, uploadExcel, uploadGSheets } from '../api.js'
 
 // ─── Traffic ──────────────────────────────────────────────────────────────────
-export function Traffic() {
+export default function Traffic() {
   const [data, setData] = useState(null)
   useEffect(() => { getTraffic().then(setData) }, [])
   const hourly = data?.hourly?.map(r => ({ hour: r.hour+':00', count: r.avg_count })) || []
@@ -44,7 +44,6 @@ export function Traffic() {
 // ─── Delivery ─────────────────────────────────────────────────────────────────
 const PLAT_LABELS = { yandex: 'Яндекс Еда', dc: 'Delivery Club', self: 'Самовывоз' }
 const PLAT_COLORS = { yandex: '#1e3a8a', dc: '#b91c1c', self: '#0f766e' }
-const fmtM = n => n ? (n >= 1e6 ? (n/1e6).toFixed(2)+'М ₽' : Math.round(n/1000)+'К ₽') : '—'
 
 export function Delivery() {
   const [data, setData] = useState(null)
@@ -101,7 +100,6 @@ export function Marketing() {
     followersByPeriod[r.period][r.platform] = r.value
   })
   const follData = Object.values(followersByPeriod)
-
   const adsByPeriod = {}
   ads.forEach(r => {
     if (!adsByPeriod[r.period]) adsByPeriod[r.period] = { period: r.period.slice(5) }
@@ -119,7 +117,7 @@ export function Marketing() {
           </div>
         ))}
       </div>
-      {tab === 'social' && <>
+      {tab === 'social' && (
         <div className="card"><h3>Рост подписчиков 2025</h3>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={follData}>
@@ -131,8 +129,8 @@ export function Marketing() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </>}
-      {tab === 'ads' && <>
+      )}
+      {tab === 'ads' && (
         <div className="card"><h3>Расход по рекламным каналам, ₽</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={adsData}>
@@ -145,13 +143,14 @@ export function Marketing() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </>}
+      )}
     </div>
   )
 }
 
 // ─── Ops ──────────────────────────────────────────────────────────────────────
 const CAT_RU = { cleanliness:'Чистота', queue:'Очереди', food:'Еда', service:'Сервис', tech:'Техника' }
+
 export function Ops() {
   const [data, setData] = useState(null)
   const [nps, setNps]   = useState([])
@@ -170,9 +169,12 @@ export function Ops() {
       <div className="grid-2">
         <div className="card"><h3>Жалобы по категориям</h3>
           <ResponsiveContainer width="100%" height={180}>
-            <PieChart><Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} label={({name,value})=>`${name}: ${value}`} labelLine={false}>
-              {pieData.map((_,i) => <Cell key={i} fill={COLORS[i%COLORS.length]} />)}
-            </Pie><Tooltip /></PieChart>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={65} label={({name,value})=>`${name}: ${value}`} labelLine={false}>
+                {pieData.map((_,i) => <Cell key={i} fill={COLORS[i%COLORS.length]} />)}
+              </Pie>
+              <Tooltip />
+            </PieChart>
           </ResponsiveContainer>
         </div>
         <div className="card"><h3>Свежие жалобы</h3>
@@ -210,7 +212,10 @@ export function Forecast() {
   }))
   return (
     <div>
-      <div className="page-header"><h2>Прогноз <span style={{ fontSize:12, background:'#e8efff', color:'#1e3a8a', padding:'2px 8px', borderRadius:4, marginLeft:8 }}>AI-модель</span></h2><p>Линейная экстраполяция на основе истории</p></div>
+      <div className="page-header">
+        <h2>Прогноз <span style={{ fontSize:12, background:'#e8efff', color:'#1e3a8a', padding:'2px 8px', borderRadius:4, marginLeft:8 }}>AI-модель</span></h2>
+        <p>Линейная экстраполяция на основе истории</p>
+      </div>
       <div className="card"><h3>Факт vs Прогноз, тыс. ₽</h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={chartData}>
@@ -248,7 +253,7 @@ export function Upload() {
     try {
       const r = await uploadGSheets(url)
       setStatus('✅ ' + r.imported)
-    } catch { setStatus('❌ Ошибка. Проверь ссылку (должна быть опубликована как CSV)') }
+    } catch { setStatus('❌ Ошибка. Проверь ссылку') }
   }
 
   return (
@@ -256,9 +261,7 @@ export function Upload() {
       <div className="page-header"><h2>Загрузить данные</h2><p>Excel или Google Sheets</p></div>
       <div className="card">
         <h3>Excel файл (.xlsx)</h3>
-        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-          Листы: «revenue» (tenant, period, amount, type, paid) или «traffic» (ts, count)
-        </p>
+        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>Листы: «revenue» или «traffic»</p>
         <label className="upload-area">
           <input type="file" accept=".xlsx,.xls" onChange={handleFile} />
           <div style={{ fontSize: 32, marginBottom: 8 }}>📁</div>
@@ -267,58 +270,16 @@ export function Upload() {
       </div>
       <div className="card">
         <h3>Google Sheets</h3>
-        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
-          Файл → Поделиться → Опубликовать в интернете → CSV → вставь ссылку
-        </p>
+        <p style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>Файл → Поделиться → Опубликовать в интернете → CSV</p>
         <div style={{ display:'flex', gap: 8 }}>
           <input type="text" placeholder="https://docs.google.com/spreadsheets/..." value={url} onChange={e => setUrl(e.target.value)}
             style={{ flex:1, padding:'8px 12px', border:'1px solid #e2e8f0', borderRadius: 6, fontSize: 12 }} />
-          <button onClick={handleUrl}
-            style={{ padding:'8px 16px', background:'#1e3a8a', color:'#fff', border:'none', borderRadius: 6, cursor:'pointer', fontSize: 12 }}>
+          <button onClick={handleUrl} style={{ padding:'8px 16px', background:'#1e3a8a', color:'#fff', border:'none', borderRadius: 6, cursor:'pointer', fontSize: 12 }}>
             Импорт
           </button>
         </div>
       </div>
       {status && <div style={{ padding:'12px 16px', background: status.startsWith('✅') ? '#dcfce7' : '#fee2e2', borderRadius: 8, fontSize: 13 }}>{status}</div>}
-    </div>
-  )
-}
-
-export default function Traffic() { return <TrafficPage /> }
-function TrafficPage() {
-  const [data, setData] = useState(null)
-  useEffect(() => { getTraffic().then(setData) }, [])
-  const hourly = data?.hourly?.map(r => ({ hour: r.hour+':00', count: r.avg_count })) || []
-  const daily  = data?.monthly?.slice(-14).map(r => ({ day: r.day.slice(8), total: r.total })) || []
-  return (
-    <div>
-      <div className="page-header"><h2>Трафик и посещаемость</h2><p>Счётчики посетителей, часовая динамика</p></div>
-      <div className="metrics">
-        <div className="metric-card"><div className="label">Сегодня</div><div className="value">{data?.today?.toLocaleString('ru') || '...'}</div><div className="delta delta-up">↑ 6%</div></div>
-        <div className="metric-card"><div className="label">Пиковый час</div><div className="value">18:00–20:00</div><div className="delta">~340/ч</div></div>
-      </div>
-      <div className="card"><h3>Часовой трафик (среднее)</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={hourly}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="hour" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Area type="monotone" dataKey="count" fill="#e8efff" stroke="#1e3a8a" strokeWidth={2} name="Посетители" />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="card"><h3>Дневной трафик, последние 2 нед.</h3>
-        <ResponsiveContainer width="100%" height={160}>
-          <BarChart data={daily}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 11 }} />
-            <Tooltip />
-            <Bar dataKey="total" fill="#0f766e" radius={[3,3,0,0]} name="Посетители" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
     </div>
   )
 }
