@@ -1,89 +1,61 @@
-"""
-upload.py — импорт данных из Excel или по ссылке Google Sheets.
-
-Ожидаемый формат Excel (лист «revenue»):
-  tenant | period (YYYY-MM) | amount | type | paid (0/1)
-
-Ожидаемый формат Excel (лист «traffic»):
-  ts (YYYY-MM-DD HH:00) | count
-"""
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
-import pandas as pd
-import io
-import httpx
+import io, csv, httpx
 from db import get_conn
-
 router = APIRouter()
 
-def _upsert_revenue(df: pd.DataFrame, conn):
+def _save_revenue(rows, conn):
     cur = conn.cursor()
-    for _, row in df.iterrows():
-        tid = cur.execute(
-            "SELECT id FROM tenants WHERE name=?", (str(row.get("tenant","")),)
-        ).fetchone()
-        if not tid:
-            cur.execute("INSERT INTO tenants (name) VALUES (?)", (str(row["tenant"]),))
-            tid_val = cur.lastrowid
-        else:
-            tid_val = tid["id"]
-        cur.execute(
-            "INSERT OR REPLACE INTO revenue (tenant_id,period,amount,type,paid) VALUES (?,?,?,?,?)",
-            (tid_val, str(row["period"]), float(row["amount"]),
-             str(row.get("type","rent")), int(row.get("paid", 0)))
-        )
+    for r in rows:
+        tid = cur.execute("SELECT id FROM tenants WHERE name=?", (r.get("tenant",""),)).fetchone()
+        tid_val = tid["id"] if tid else cur.execute("INSERT INTO tenants (name) VALUES (?)", (r.get("tenant",""),)).lastrowid
+        cur.execute("INSERT INTO revenue (tenant_id,period,amount,type,paid) VALUES (?,?,?,?,?)",
+                    (tid_val, r["period"], float(r["amount"]), r.get("type","rent"), int(r.get("paid",0))))
     conn.commit()
 
-def _upsert_traffic(df: pd.DataFrame, conn):
-    rows = [(str(r["ts"]), int(r["count"])) for _, r in df.iterrows()]
-    conn.executemany("INSERT INTO traffic (ts, count) VALUES (?,?)", rows)
+def _save_traffic(rows, conn):
+    conn.executemany("INSERT INTO traffic (ts,count) VALUES (?,?)", [(r["ts"],int(r["count"])) for r in rows])
     conn.commit()
 
 @router.post("/excel")
 async def upload_excel(file: UploadFile = File(...)):
-    if not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(400, "Нужен файл .xlsx или .xls")
     content = await file.read()
-    xf = pd.ExcelFile(io.BytesIO(content))
-    conn = get_conn()
-    imported = []
-
-    if "revenue" in xf.sheet_names:
-        df = xf.parse("revenue")
-        df.columns = [c.lower().strip() for c in df.columns]
-        _upsert_revenue(df, conn)
-        imported.append(f"revenue: {len(df)} строк")
-
-    if "traffic" in xf.sheet_names:
-        df = xf.parse("traffic")
-        df.columns = [c.lower().strip() for c in df.columns]
-        _upsert_traffic(df, conn)
-        imported.append(f"traffic: {len(df)} строк")
-
-    conn.close()
-    return {"ok": True, "imported": imported}
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True)
+        imported = []
+        conn = get_conn()
+        for sheet_name in wb.sheetnames:
+            ws = wb[sheet_name]
+            rows_iter = iter(ws.rows)
+            headers = [str(c.value).lower().strip() for c in next(rows_iter)]
+            rows = [dict(zip(headers,[str(c.value) if c.value is not None else "" for c in row])) for row in rows_iter]
+            if sheet_name == "revenue" and "amount" in headers:
+                _save_revenue(rows, conn)
+                imported.append(f"revenue: {len(rows)} строк")
+            elif sheet_name == "traffic" and "count" in headers:
+                _save_traffic(rows, conn)
+                imported.append(f"traffic: {len(rows)} строк")
+        conn.close()
+        return {"ok":True,"imported":imported}
+    except Exception as e:
+        raise HTTPException(400, str(e))
 
 @router.post("/google-sheets")
-async def upload_gsheets(url: str = Query(..., description="Ссылка на Google Sheets (published as CSV)")):
-    """
-    Используй: Файл → Поделиться → Опубликовать в интернете → CSV
-    URL вида: https://docs.google.com/spreadsheets/d/.../pub?output=csv
-    """
+async def upload_gsheets(url: str = Query(...)):
     async with httpx.AsyncClient() as client:
         resp = await client.get(url, follow_redirects=True)
     if resp.status_code != 200:
-        raise HTTPException(400, f"Не удалось загрузить таблицу: {resp.status_code}")
-
-    df = pd.read_csv(io.StringIO(resp.text))
-    df.columns = [c.lower().strip() for c in df.columns]
-
+        raise HTTPException(400, f"Ошибка загрузки: {resp.status_code}")
+    reader = csv.DictReader(io.StringIO(resp.text))
+    rows = [{k.lower().strip():v for k,v in r.items()} for r in reader]
+    if not rows: raise HTTPException(400, "Пустая таблица")
     conn = get_conn()
-    if "tenant" in df.columns and "amount" in df.columns:
-        _upsert_revenue(df, conn)
-        conn.close()
-        return {"ok": True, "imported": f"revenue: {len(df)} строк"}
-    elif "ts" in df.columns and "count" in df.columns:
-        _upsert_traffic(df, conn)
-        conn.close()
-        return {"ok": True, "imported": f"traffic: {len(df)} строк"}
+    headers = list(rows[0].keys())
+    if "tenant" in headers and "amount" in headers:
+        _save_revenue(rows, conn); conn.close()
+        return {"ok":True,"imported":f"revenue: {len(rows)} строк"}
+    elif "ts" in headers and "count" in headers:
+        _save_traffic(rows, conn); conn.close()
+        return {"ok":True,"imported":f"traffic: {len(rows)} строк"}
     conn.close()
-    raise HTTPException(400, "Неизвестный формат таблицы. Нужны колонки: tenant+amount или ts+count")
+    raise HTTPException(400, "Нужны колонки: tenant+amount или ts+count")

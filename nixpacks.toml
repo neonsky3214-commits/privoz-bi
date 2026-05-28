@@ -1,12 +1,11 @@
 [phases.setup]
-nixPkgs = ["python311", "gcc", "zlib"]
+nixPkgs = ["python311"]
 
 [phases.install]
 cmds = [
   "python -m venv /app/venv",
-  "/app/venv/bin/pip install --upgrade pip",
-  "/app/venv/bin/pip install numpy==1.26.4",
-  "/app/venv/bin/pip install -r backend/requirements.txt"
+  "/app/venv/bin/pip install --upgrade pip --quiet",
+  "/app/venv/bin/pip install -r backend/requirements.txt --quiet"
 ]
 
 [start]
