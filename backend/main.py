@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
-from routers import revenue, analytics, tenants, traffic, delivery, marketing, ops, forecast, upload
+from routers import revenue, analytics, bdds, tenants, traffic, delivery, marketing, ops, forecast, upload
 from routers import auth, alerts, plans, events, telegram
 
 app = FastAPI(title="ПРИВОЗ BI")
@@ -22,6 +22,7 @@ app.include_router(delivery.router,  prefix="/api/delivery")
 app.include_router(marketing.router, prefix="/api/marketing")
 app.include_router(ops.router,       prefix="/api/ops")
 app.include_router(forecast.router,  prefix="/api/forecast")
+app.include_router(bdds.router,     prefix="/api/bdds")
 app.include_router(analytics.router,   prefix="/api/analytics")
 app.include_router(upload.router,    prefix="/api/upload")
 

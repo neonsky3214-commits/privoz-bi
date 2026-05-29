@@ -10,6 +10,7 @@ import Marketing  from './pages/Marketing.jsx'
 import Ops        from './pages/Ops.jsx'
 import Forecast   from './pages/Forecast.jsx'
 import Analytics  from './pages/Analytics.jsx'
+import Finance   from './pages/Finance.jsx'
 import Events     from './pages/Events.jsx'
 import Settings   from './pages/Settings.jsx'
 import Upload     from './pages/Upload.jsx'
@@ -29,6 +30,7 @@ const NAV = [
   { section: 'Финансы' },
   { id:'revenue',   label:'Выручка',         icon:'M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6' },
   { id:'tenants',   label:'Арендаторы',      icon:'M3 9h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9zM3 9l9-7 9 7' },
+  { id:'finance',   label:'БДДС / Финансы',  icon:'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M12 7h.01M9 7h.01M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5z' },
   { id:'forecast',  label:'Прогноз',         icon:'M23 6l-9.5 9.5-5-5L1 18M17 6h6v6' },
   { section: 'Операции' },
   { id:'traffic',   label:'Трафик',          icon:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75' },
@@ -42,7 +44,7 @@ const NAV = [
   { id:'settings',  label:'Настройки',       icon:'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
 ]
 
-const PAGES = { overview:Overview, analytics:Analytics, revenue:Revenue, tenants:Tenants, traffic:Traffic, delivery:Delivery, marketing:Marketing, ops:Ops, forecast:Forecast, events:Events, settings:Settings, upload:Upload }
+const PAGES = { overview:Overview, analytics:Analytics, finance:Finance, revenue:Revenue, tenants:Tenants, traffic:Traffic, delivery:Delivery, marketing:Marketing, ops:Ops, forecast:Forecast, events:Events, settings:Settings, upload:Upload }
 
 function Login({ onLogin }) {
   const [pwd, setPwd] = useState('')
