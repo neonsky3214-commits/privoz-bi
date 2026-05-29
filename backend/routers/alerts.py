@@ -3,35 +3,62 @@ from db import get_conn
 from routers.auth import verify_token
 router = APIRouter()
 
+def _table_exists(conn, name):
+    return conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (name,)
+    ).fetchone() is not None
+
 @router.get("/")
-def get_alerts(request: Request, period: str = Query("2025-05")):
+def get_alerts(request: Request, period: str = Query("2025-12")):
     verify_token(request)
     conn = get_conn()
     alerts = []
 
-    # Debt alerts
-    debt = conn.execute("""
-        SELECT t.name, SUM(r.amount) as debt FROM revenue r
-        JOIN tenants t ON t.id=r.tenant_id
-        WHERE r.paid=0 AND r.period < ?
-        GROUP BY r.tenant_id HAVING debt > 50000
-    """, (period,)).fetchall()
-    for d in debt:
-        alerts.append({"level":"red","message":f"💸 {d['name']} — долг {round(d['debt']/1000)}К ₽ не оплачен более месяца"})
+    try:
+        # 1. Падение товарооборота месяц к месяцу
+        if _table_exists(conn, "turnover"):
+            rows = conn.execute("""
+                SELECT period, turnover FROM turnover
+                WHERE tenant='Привоз, Москва' AND turnover > 0
+                ORDER BY period DESC LIMIT 2
+            """).fetchall()
+            if len(rows) == 2 and rows[1]["turnover"]:
+                change = (rows[0]["turnover"] - rows[1]["turnover"]) / rows[1]["turnover"] * 100
+                if change < -10:
+                    alerts.append({"level":"red","message":f"📉 Товарооборот упал на {abs(round(change))}% за месяц ({rows[0]['period']})"})
+                elif change < -3:
+                    alerts.append({"level":"amber","message":f"⚠️ Товарооборот снизился на {abs(round(change))}% к прошлому месяцу"})
 
-    # NPS alert
-    nps = conn.execute("SELECT score FROM nps ORDER BY period DESC LIMIT 1").fetchone()
-    if nps and nps["score"] < 60:
-        alerts.append({"level":"red","message":f"📉 NPS упал до {nps['score']} — ниже критического порога"})
-    elif nps and nps["score"] < 70:
-        alerts.append({"level":"amber","message":f"⚠️ NPS {nps['score']} — снижается, нужно обратить внимание"})
+            # 2. Арендаторы с резким падением оборота
+            decline = conn.execute("""
+                WITH last_two AS (
+                    SELECT tenant, period, turnover,
+                           ROW_NUMBER() OVER (PARTITION BY tenant ORDER BY period DESC) as rn
+                    FROM turnover
+                    WHERE tenant != 'Привоз, Москва' AND turnover > 0
+                )
+                SELECT a.tenant, a.turnover as cur, b.turnover as prev
+                FROM last_two a JOIN last_two b ON a.tenant=b.tenant
+                WHERE a.rn=1 AND b.rn=2 AND b.turnover > 0
+                  AND (a.turnover - b.turnover) / CAST(b.turnover AS REAL) < -0.3
+                LIMIT 3
+            """).fetchall()
+            for d in decline:
+                drop = round((d["prev"] - d["cur"]) / d["prev"] * 100)
+                alerts.append({"level":"amber","message":f"🔻 {d['tenant']}: оборот упал на {drop}% за месяц"})
 
-    # Complaints alert
-    cnt = conn.execute("SELECT COUNT(*) as c FROM complaints WHERE created_at LIKE ?", (f"{period}%",)).fetchone()["c"]
-    if cnt > 30:
-        alerts.append({"level":"red","message":f"🔴 {cnt} жалоб за период — выше нормы (>30)"})
-    elif cnt > 20:
-        alerts.append({"level":"amber","message":f"🟡 {cnt} жалоб — приближается к пороговому значению"})
+        # 3. БДДС: расходы превысили план
+        if _table_exists(conn, "bdds"):
+            over = conn.execute("""
+                SELECT name, plan, fact FROM bdds
+                WHERE code='2' AND fact IS NOT NULL AND plan > 0 AND fact > plan * 1.1
+                ORDER BY period DESC LIMIT 1
+            """).fetchone()
+            if over:
+                pct = round((over["fact"] - over["plan"]) / over["plan"] * 100)
+                alerts.append({"level":"amber","message":f"💸 Расходы превысили план на {pct}% — проверь бюджет"})
+    except Exception:
+        pass
 
     conn.close()
     return alerts

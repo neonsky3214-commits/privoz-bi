@@ -8,13 +8,18 @@ api.interceptors.request.use(cfg => {
   return cfg
 })
 
-api.interceptors.response.use(r => r, err => {
-  if (err.response?.status === 401) {
-    localStorage.removeItem('bi_token')
-    window.location.reload()
+api.interceptors.response.use(
+  r => r,
+  err => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('bi_token')
+      window.location.reload()
+    }
+    return Promise.reject(err)
   }
-  return Promise.reject(err)
-})
+)
+
+export default api
 
 export const login               = (pwd)    => api.post('/auth/login', { password: pwd }).then(r => r.data)
 export const getRevenueSummary   = (p)      => api.get('/revenue/summary', { params: { period: p } }).then(r => r.data)
@@ -28,8 +33,6 @@ export const getComplaints       = (p)      => api.get('/ops/complaints', { para
 export const getNPS              = ()       => api.get('/ops/nps').then(r => r.data)
 export const getForecast         = ()       => api.get('/forecast/revenue').then(r => r.data)
 export const getAlerts           = (p)      => api.get('/alerts/', { params: { period: p } }).then(r => r.data)
-export const getPlans            = (p)      => api.get('/plans/', { params: { period: p } }).then(r => r.data)
-export const savePlan            = (d)      => api.post('/plans/', d).then(r => r.data)
 export const getEvents           = ()       => api.get('/events/').then(r => r.data)
 export const saveEvent           = (d)      => api.post('/events/', d).then(r => r.data)
 export const deleteEvent         = (id)     => api.delete(`/events/${id}`).then(r => r.data)
